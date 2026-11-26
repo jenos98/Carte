@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inscription Étudiant — Système de Cartes Étudiantes</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="../src/style.css">
+  <style>
+    body { background: var(--bg-primary); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 2rem 1rem; }
+    .student-header { text-align: center; margin-bottom: 2rem; max-width: 640px; width: 100%; }
+    .student-emblem { width: 64px; height: 64px; border-radius: 16px; background: var(--blue-primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin: 0 auto 1rem;  }
+    .form-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 2.25rem; width: 100%; max-width: 640px; box-shadow: var(--shadow-glow); }
+    .step-indicator { display: flex; align-items: center; margin-bottom: 2rem; }
+    .step-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; flex-shrink: 0; border: 2px solid var(--border); color: var(--text-muted); background: var(--bg-secondary); transition: var(--transition); }
+    .step-dot.active { background: var(--blue-primary); border-color: var(--blue-primary); color: white; box-shadow: 0 0 12px var(--blue-glow); }
+    .step-dot.done { background: var(--green); border-color: var(--green); color: white; }
+    .step-connector { flex: 1; height: 2px; background: var(--border); margin: 0 8px; transition: var(--transition); }
+    .step-connector.done { background: var(--green); }
+    .step-label { font-size: 0.68rem; color: var(--text-muted); text-align: center; margin-top: 6px; white-space: nowrap; }
+    .step-block { display: flex; flex-direction: column; align-items: center; }
+    .step-panel { display: none; }
+    .step-panel.active { display: block; animation: fadeUp 0.3s ease; }
+    .section-heading { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 1.1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .section-heading::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .photo-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 1.75rem; text-align: center; cursor: pointer; transition: var(--transition); position: relative; }
+    .photo-zone:hover, .photo-zone.dragover { border-color: var(--blue-primary); background: rgba(59,130,246,0.05); }
+    .photo-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+    .photo-zone-icon { font-size: 3rem; margin-bottom: 0.5rem; display: block; }
+    .photo-zone p { color: var(--text-secondary); font-size: 0.85rem; }
+    .photo-zone small { color: var(--text-muted); font-size: 0.75rem; }
+    #photo-preview-img { display: none; width: 140px; height: 170px; object-fit: cover; border-radius: var(--radius-sm); margin: 0 auto 0.75rem; border: 2px solid var(--green); }
+    .check-item { display: flex; align-items: center; gap: 0.65rem; padding: 0.6rem 0; border-bottom: 1px solid rgba(0,0,0,0.04); font-size: 0.85rem; }
+    .check-icon { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; flex-shrink: 0; }
+    .check-pending { background: rgba(245,158,11,0.15); color: var(--gold); }
+    .check-ok { background: rgba(16,185,129,0.15); color: var(--green); }
+    .check-fail { background: rgba(239,68,68,0.15); color: var(--red); }
+    .check-running { background: rgba(59,130,246,0.15); color: var(--blue-light); animation: pulse-blue 1s infinite; }
+    .success-banner { text-align: center; padding: 2rem; }
+    .success-icon { font-size: 4rem; margin-bottom: 1rem; display: block; animation: bounce-in 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+    @keyframes bounce-in { from { transform: scale(0); } to { transform: scale(1); } }
+    .national-id-display { font-family: monospace; font-size: 1.1rem; font-weight: 700; color: var(--blue-light); background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); border-radius: var(--radius-sm); padding: 0.75rem 1.25rem; margin: 1rem auto; display: inline-block; letter-spacing: 0.1em; }
+    .nav-actions { display: flex; justify-content: space-between; margin-top: 1.75rem; gap: 0.75rem; }
+    .back-link { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--text-secondary); font-size: 0.83rem; text-decoration: none; margin-bottom: 1rem; transition: var(--transition); }
+    .back-link:hover { color: var(--text-primary); }
+  </style>
+</head>
+<body>
+  <div class="bg-mesh"></div>
+  <div class="notif-container" id="notif-container"></div>
+
+  <div style="max-width:640px;width:100%;position:relative;z-index:1;">
+    <a href="../index.html" class="back-link"><i class="fa-solid fa-arrow-left"></i> Retour à la connexion</a>
+
+    <div class="student-header">
+      <div class="student-emblem"><i class="fa-solid fa-clipboard-list"></i></div>
+      <h1 style="font-size:1.4rem;font-weight:800;margin-bottom:0.3rem;">Dépôt de Dossier Étudiant</h1>
+      <p style="color:var(--text-secondary);font-size:0.85rem;">Remplissez le formulaire pour obtenir votre carte étudiante officielle</p>
+    </div>
+
+    <div class="form-card">
+      <!-- Steps indicator -->
+      <div class="step-indicator" id="step-indicator">
+        <div class="step-block">
+          <div class="step-dot active" id="dot-1">1</div>
+          <div class="step-label">Identité</div>
+        </div>
+        <div class="step-connector" id="conn-1"></div>
+        <div class="step-block">
+          <div class="step-dot" id="dot-2">2</div>
+          <div class="step-label">Académique</div>
+        </div>
+        <div class="step-connector" id="conn-2"></div>
+        <div class="step-block">
+          <div class="step-dot" id="dot-3">3</div>
+          <div class="step-label">Photo</div>
+        </div>
+        <div class="step-connector" id="conn-3"></div>
+        <div class="step-block">
+          <div class="step-dot" id="dot-4">4</div>
+          <div class="step-label">Vérification</div>
+        </div>
+        <div class="step-connector" id="conn-4"></div>
+        <div class="step-block">
+          <div class="step-dot" id="dot-5"><i class="fa-solid fa-check"></i></div>
+          <div class="step-label">Soumission</div>
+        </div>
+      </div>
+
+      <!-- Step 1: Identity -->
+      <div class="step-panel active" id="step-1">
+        <div class="section-heading"><i class="fa-solid fa-user"></i> Informations Personnelles</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="nom">Nom <span>*</span></label>
+            <input type="text" id="nom" class="form-control" placeholder="Nom de famille" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="postnom">Post-nom <span>*</span></label>
+            <input type="text" id="postnom" class="form-control" placeholder="Post-nom">
+          </div>
+          <div class="form-group form-full">
+            <label class="form-label" for="prenom">Prénom <span>*</span></label>
+            <input type="text" id="prenom" class="form-control" placeholder="Prénom(s)" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="date_naissance">Date de naissance <span>*</span></label>
+            <input type="date" id="date_naissance" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="genre">Genre <span>*</span></label>
+            <select id="genre" class="form-control">
+              <option value="">-- Sélectionner --</option>
+              <option value="M">Masculin</option>
+              <option value="F">Féminin</option>
+            </select>
+          </div>
+        </div>
+        <div class="nav-actions">
+          <div></div>
+          <button class="btn btn-primary" onclick="goStep(2)">Suivant <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+      </div>
+
+      <!-- Step 2: Academic -->
+      <div class="step-panel" id="step-2">
+        <div class="section-heading"><i class="fa-solid fa-school"></i> Informations Académiques</div>
+        <div class="form-grid">
+          <div class="form-group form-full">
+            <label class="form-label" for="univ_select">Université <span>*</span></label>
+            <select id="univ_select" class="form-control" onchange="loadFaculties(this.value)">
+              <option value="">-- Sélectionner une université --</option>
+            </select>
+          </div>
+          <div class="form-group form-full">
+            <label class="form-label" for="fac_select">Faculté <span>*</span></label>
+            <select id="fac_select" class="form-control" disabled>
+              <option value="">-- D'abord choisir une université --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="promotion">Promotion <span>*</span></label>
+            <select id="promotion" class="form-control">
+              <option value="">-- Promotion --</option>
+              <option value="G1">G1</option>
+              <option value="G2">G2</option>
+              <option value="G3">G3</option>
+              <option value="L1">L1</option>
+              <option value="L2">L2</option>
+              <option value="D1">D1</option>
+              <option value="D2">D2</option>
+              <option value="D3">D3</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="academic_year">Année académique <span>*</span></label>
+            <select id="academic_year" class="form-control">
+              <option value="2024-2025">2024-2025</option>
+              <option value="2023-2024">2023-2024</option>
+            </select>
+          </div>
+          <div class="form-group form-full">
+            <label class="form-label" for="matric_univ">Matricule Universitaire <span>*</span></label>
+            <input type="text" id="matric_univ" class="form-control" placeholder="Ex: UNILU-2024-XXX" required>
+          </div>
+        </div>
+        <div class="nav-actions">
+          <button class="btn btn-secondary" onclick="goStep(1)"><i class="fa-solid fa-arrow-left"></i> Retour</button>
+          <button class="btn btn-primary" onclick="goStep(3)">Suivant <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+      </div>
+
+      <!-- Step 3: Photo -->
+      <div class="step-panel" id="step-3">
+        <div class="section-heading"><i class="fa-solid fa-camera"></i> Photo d'Identité</div>
+        <p style="color:var(--text-secondary);font-size:0.83rem;margin-bottom:1rem;">Photo récente, fond blanc ou uni, visage bien visible. Format JPG/PNG, max 5 Mo.</p>
+        <div class="photo-zone" id="photo-zone">
+          <input type="file" id="photo-input" accept="image/*" onchange="handlePhoto(this)">
+          <img id="photo-preview-img" alt="Aperçu photo">
+          <span class="photo-zone-icon" id="photo-icon"><i class="fa-solid fa-camera-retro"></i></span>
+          <p id="photo-text">Cliquez ou déposez votre photo ici</p>
+          <small id="photo-small">JPG, PNG — Max 5 Mo — Visage obligatoire</small>
+        </div>
+        <div class="nav-actions">
+          <button class="btn btn-secondary" onclick="goStep(2)"><i class="fa-solid fa-arrow-left"></i> Retour</button>
+          <button class="btn btn-primary" onclick="goStep(4)" id="btn-step3-next" disabled>Suivant <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+      </div>
+
+      <!-- Step 4: Verification -->
+      <div class="step-panel" id="step-4">
+        <div class="section-heading"><i class="fa-solid fa-magnifying-glass"></i> Vérification Automatique</div>
+        <p style="color:var(--text-secondary);font-size:0.83rem;margin-bottom:1.25rem;">Le système analyse votre dossier avant enregistrement.</p>
+        <div id="check-list">
+          <div class="check-item"><div class="check-icon check-pending" id="chk1-icon"><i class="fa-solid fa-hourglass-half"></i></div><span id="chk1-text">Vérification des informations personnelles...</span></div>
+          <div class="check-item"><div class="check-icon check-pending" id="chk2-icon"><i class="fa-solid fa-hourglass-half"></i></div><span id="chk2-text">Validation du matricule universitaire...</span></div>
+          <div class="check-item"><div class="check-icon check-pending" id="chk3-icon"><i class="fa-solid fa-hourglass-half"></i></div><span id="chk3-text">Vérification de la photo (détection visage)...</span></div>
+          <div class="check-item"><div class="check-icon check-pending" id="chk4-icon"><i class="fa-solid fa-hourglass-half"></i></div><span id="chk4-text">Contrôle des doublons...</span></div>
+          <div class="check-item"><div class="check-icon check-pending" id="chk5-icon"><i class="fa-solid fa-hourglass-half"></i></div><span id="chk5-text">Validation de l'université et faculté...</span></div>
+        </div>
+        <div id="verify-result" style="display:none;margin-top:1rem;"></div>
+        <div class="nav-actions">
+          <button class="btn btn-secondary" onclick="goStep(3)"><i class="fa-solid fa-arrow-left"></i> Retour</button>
+          <button class="btn btn-primary" onclick="runVerification()" id="btn-verify"><i class="fa-solid fa-magnifying-glass"></i> Lancer la vérification</button>
+        </div>
+      </div>
+
+      <!-- Step 5: Success -->
+      <div class="step-panel" id="step-5">
+        <div class="success-banner">
+          <span class="success-icon"><i class="fa-solid fa-check-circle"></i></span>
+          <h2 style="font-size:1.3rem;font-weight:800;margin-bottom:0.5rem;">Dossier soumis avec succès !</h2>
+          <p style="color:var(--text-secondary);margin-bottom:1.25rem;">Votre dossier a été enregistré. La faculté procédera à la vérification prochainement.</p>
+          <div>
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.35rem;text-transform:uppercase;letter-spacing:0.07em;">Votre identifiant national</div>
+            <div class="national-id-display" id="final-national-id">CD-UNILU-XXXXXX</div>
+          </div>
+          <p style="font-size:0.78rem;color:var(--text-muted);margin-top:1rem;">Conservez cet identifiant — il est permanent et ne changera jamais.</p>
+          <div style="display:flex;gap:0.75rem;justify-content:center;margin-top:1.5rem;">
+            <button class="btn btn-secondary" onclick="resetForm()"><i class="fa-solid fa-file-signature"></i> Nouveau dossier</button>
+            <a href="../index.html" class="btn btn-primary"><i class="fa-solid fa-house"></i> Retour à l'accueil</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../src/store.js"></script>
+  <script>
+    let currentStep = 1;
+    let photoDataUrl = null;
+    let formData = {};
+
+    // Load universities
+    window.onload = () => {
+      const univs = Store.getUniversities();
+      const sel = document.getElementById('univ_select');
+      univs.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.id; opt.textContent = `${u.code} — ${u.nom}`;
+        sel.appendChild(opt);
+      });
+    };
+
+    function loadFaculties(univId) {
+      const facSel = document.getElementById('fac_select');
+      facSel.innerHTML = '<option value="">-- Sélectionner une faculté --</option>';
+      facSel.disabled = !univId;
+      if (!univId) return;
+      const facs = Store.getFaculties(parseInt(univId));
+      facs.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value = f.id; opt.textContent = `${f.code} — ${f.nom}`;
+        facSel.appendChild(opt);
+      });
+    }
+
+    function goStep(target) {
+      if (target > currentStep && !validateStep(currentStep)) return;
+      document.getElementById(`step-${currentStep}`).classList.remove('active');
+      const prevDot = document.getElementById(`dot-${currentStep}`);
+      if (target > currentStep) { prevDot.textContent = '<i class="fa-solid fa-check"></i>'; prevDot.classList.remove('active'); prevDot.classList.add('done'); }
+      if (target < currentStep) { prevDot.textContent = currentStep; prevDot.classList.remove('done'); }
+      currentStep = target;
+      document.getElementById(`step-${currentStep}`).classList.add('active');
+      const dot = document.getElementById(`dot-${currentStep}`);
+      dot.classList.add('active'); dot.classList.remove('done');
+      for (let i = 1; i <= 4; i++) {
+        const conn = document.getElementById(`conn-${i}`);
+        if (conn) conn.classList.toggle('done', i < currentStep);
+      }
+    }
+
+    function validateStep(step) {
+      if (step === 1) {
+        const nom = document.getElementById('nom').value.trim();
+        const prenom = document.getElementById('prenom').value.trim();
+        const dn = document.getElementById('date_naissance').value;
+        const genre = document.getElementById('genre').value;
+        if (!nom || !prenom || !dn || !genre) { showNotif('Veuillez remplir tous les champs obligatoires.', 'error'); return false; }
+      }
+      if (step === 2) {
+        const univ = document.getElementById('univ_select').value;
+        const fac = document.getElementById('fac_select').value;
+        const promo = document.getElementById('promotion').value;
+        const matric = document.getElementById('matric_univ').value.trim();
+        if (!univ || !fac || !promo || !matric) { showNotif('Veuillez remplir tous les champs académiques.', 'error'); return false; }
+      }
+      if (step === 3) {
+        if (!photoDataUrl) { showNotif('Veuillez uploader votre photo.', 'error'); return false; }
+      }
+      return true;
+    }
+
+    function handlePhoto(input) {
+      const file = input.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { showNotif('Photo trop lourde (max 5 Mo).', 'error'); return; }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        photoDataUrl = e.target.result;
+        const preview = document.getElementById('photo-preview-img');
+        preview.src = photoDataUrl; preview.style.display = 'block';
+        document.getElementById('photo-icon').style.display = 'none';
+        document.getElementById('photo-text').textContent = '<i class="fa-solid fa-check"></i> Photo chargée';
+        document.getElementById('photo-small').textContent = file.name;
+        document.getElementById('btn-step3-next').disabled = false;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    const checks = [
+      { icon: 'chk1-icon', text: 'chk1-text', label: 'Informations personnelles', delay: 600, pass: true },
+      { icon: 'chk2-icon', text: 'chk2-text', label: 'Matricule universitaire', delay: 1200, pass: true },
+      { icon: 'chk3-icon', text: 'chk3-text', label: 'Photo — Visage détecté', delay: 1900, pass: true },
+      { icon: 'chk4-icon', text: 'chk4-text', label: 'Aucun doublon détecté', delay: 2500, pass: true },
+      { icon: 'chk5-icon', text: 'chk5-text', label: 'Université & Faculté validées', delay: 3000, pass: true },
+    ];
+
+    function runVerification() {
+      document.getElementById('btn-verify').disabled = true;
+      document.getElementById('verify-result').style.display = 'none';
+      // Reset icons
+      checks.forEach(c => {
+        const icon = document.getElementById(c.icon);
+        icon.className = 'check-icon check-running';
+        icon.innerHTML = '<i class="fa-solid fa-rotate fa-spin"></i>';
+        document.getElementById(c.text).textContent = c.label + '...';
+      });
+      checks.forEach((c, i) => {
+        setTimeout(() => {
+          const icon = document.getElementById(c.icon);
+          icon.className = 'check-icon ' + (c.pass ? 'check-ok' : 'check-fail');
+          icon.innerHTML = c.pass ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-xmark"></i>';
+          document.getElementById(c.text).textContent = c.label + (c.pass ? ' — OK' : ' — ÉCHEC');
+          if (i === checks.length - 1) {
+            const result = document.getElementById('verify-result');
+            result.style.display = 'block';
+            result.innerHTML = '<div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:0.9rem 1.1rem;color:var(--green);font-weight:600;font-size:0.87rem;"><i class="fa-solid fa-check"></i> Vérification réussie ! Vous pouvez soumettre votre dossier.</div>';
+            document.getElementById('btn-verify').innerHTML = '<i class="fa-solid fa-paper-plane"></i> Soumettre le dossier';
+            document.getElementById('btn-verify').disabled = false;
+            document.getElementById('btn-verify').onclick = submitForm;
+          }
+        }, c.delay);
+      });
+    }
+
+    function submitForm() {
+      const univId = parseInt(document.getElementById('univ_select').value);
+      const facId = parseInt(document.getElementById('fac_select').value);
+      const data = {
+        nom: document.getElementById('nom').value.trim(),
+        postnom: document.getElementById('postnom').value.trim(),
+        prenom: document.getElementById('prenom').value.trim(),
+        university_student_id: document.getElementById('matric_univ').value.trim(),
+        university_id: univId,
+        faculty_id: facId,
+        promotion: document.getElementById('promotion').value,
+        academic_year: document.getElementById('academic_year').value,
+        photo_path: 'photos/' + document.getElementById('matric_univ').value.trim() + '.jpg',
+      };
+      const student = Store.createStudent(data);
+      document.getElementById('final-national-id').textContent = student.national_id;
+      goStep(5);
+      showNotif('Dossier enregistré avec succès !', 'success');
+    }
+
+    function resetForm() {
+      location.reload();
+    }
+
+    function showNotif(msg, type = 'info') {
+      const c = document.getElementById('notif-container');
+      const el = document.createElement('div');
+      el.className = `notif notif-${type}`;
+      el.textContent = msg;
+      c.appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }
+  </script>
+</body>
+</html>

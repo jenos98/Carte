@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ministère — Système de Cartes Étudiantes</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="../src/style.css">
+  <style>
+    .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    .content-full { grid-column: 1 / -1; }
+    @media(max-width:900px) { .content-grid { grid-template-columns: 1fr; } }
+    .univ-card { padding: 1.1rem 1.25rem; display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid var(--border); }
+    .univ-card:last-child { border-bottom: none; }
+    .univ-avatar { width: 42px; height: 42px; border-radius: 10px; background: linear-gradient(135deg, var(--blue-primary), var(--purple)); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+    .univ-code { font-family: monospace; font-size: 0.72rem; color: var(--text-muted); }
+  </style>
+</head>
+<body>
+  <div class="bg-mesh"></div>
+  <div class="notif-container" id="notif-container"></div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon"><i class="fa-solid fa-building-columns"></i></div>
+      <div class="logo-text"><strong>Ministère</strong><span>Niveau National</span></div>
+    </div>
+    <div class="sidebar-role role-MINISTERE"><i class="fa-solid fa-building-columns"></i> Ministère de l'Éducation</div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Navigation</div>
+      <a class="nav-item active" href="#" onclick="showTab('dashboard')"><span class="nav-icon"><i class="fa-solid fa-chart-simple"></i></span>Tableau de bord</a>
+      <a class="nav-item" href="#" onclick="showTab('universities')"><span class="nav-icon"><i class="fa-solid fa-school"></i></span>Universités</a>
+      <a class="nav-item" href="#" onclick="showTab('admins')"><span class="nav-icon"><i class="fa-solid fa-users"></i></span>Administrateurs</a>
+      <a class="nav-item" href="#" onclick="showTab('logs')"><span class="nav-icon"><i class="fa-solid fa-clipboard-list"></i></span>Journal des actions</a>
+      <a class="nav-item" href="#" onclick="showTab('stats')"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span>Statistiques</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" id="sidebar-avatar">M</div>
+        <div class="user-info">
+          <strong id="sidebar-name">...</strong>
+          <span>Ministère</span>
+        </div>
+      </div>
+      <button class="btn btn-secondary" style="width:100%;margin-top:0.75rem;justify-content:center;" onclick="logout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Déconnexion</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-wrapper">
+    <!-- TAB: Dashboard -->
+    <div id="tab-dashboard">
+      <div class="topbar">
+        <div><div class="page-title">Tableau de bord national</div><div class="page-subtitle">Vue d'ensemble du système de gestion des cartes étudiantes</div></div>
+        <button class="btn btn-gold" onclick="openModal('modal-add-univ')">+ Nouvelle université</button>
+      </div>
+      <div class="stats-grid" id="stats-grid"></div>
+      <div class="content-grid">
+        <div class="glass-card" style="padding:1.5rem;">
+          <div class="section-header">
+            <div><div class="section-title"><i class="fa-solid fa-school"></i> Universités enregistrées</div><div class="section-subtitle">Toutes les universités du système</div></div>
+            <button class="btn btn-secondary btn-sm" onclick="showTab('universities')">Voir tout</button>
+          </div>
+          <div id="mini-univ-list"></div>
+        </div>
+        <div class="glass-card" style="padding:1.5rem;">
+          <div class="section-header">
+            <div><div class="section-title"><i class="fa-solid fa-clipboard-list"></i> Dernières actions</div><div class="section-subtitle">Journal d'activité récent</div></div>
+            <button class="btn btn-secondary btn-sm" onclick="showTab('logs')">Voir tout</button>
+          </div>
+          <div id="mini-log-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Universities -->
+    <div id="tab-universities" style="display:none;">
+      <div class="topbar">
+        <div><div class="page-title"><i class="fa-solid fa-school"></i> Gestion des Universités</div><div class="page-subtitle">Créer et gérer les universités</div></div>
+        <button class="btn btn-primary" onclick="openModal('modal-add-univ')">+ Nouvelle université</button>
+      </div>
+      <div class="glass-card" style="padding:1.5rem;">
+        <div class="table-wrapper">
+          <table id="univ-table">
+            <thead><tr><th>Code</th><th>Nom</th><th>Facultés</th><th>Étudiants</th><th>Statut</th><th>Actions</th></tr></thead>
+            <tbody id="univ-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Admins -->
+    <div id="tab-admins" style="display:none;">
+      <div class="topbar">
+        <div><div class="page-title"><i class="fa-solid fa-users"></i> Administrateurs Université</div><div class="page-subtitle">Gérer les administrateurs des universités</div></div>
+        <button class="btn btn-primary" onclick="openModal('modal-add-admin')">+ Nouvel administrateur</button>
+      </div>
+      <div class="glass-card" style="padding:1.5rem;">
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Nom</th><th>Email</th><th>Université</th><th>Statut</th></tr></thead>
+            <tbody id="admins-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Logs -->
+    <div id="tab-logs" style="display:none;">
+      <div class="topbar"><div><div class="page-title"><i class="fa-solid fa-clipboard-list"></i> Journal des Actions</div><div class="page-subtitle">Traçabilité complète de toutes les opérations</div></div></div>
+      <div class="glass-card" style="padding:1.5rem;">
+        <div id="full-log-list"></div>
+      </div>
+    </div>
+
+    <!-- TAB: Stats -->
+    <div id="tab-stats" style="display:none;">
+      <div class="topbar"><div><div class="page-title"><i class="fa-solid fa-chart-line"></i> Statistiques Nationales</div><div class="page-subtitle">Analyse et suivi des données du système</div></div></div>
+      <div class="stats-grid" id="stats-grid-2"></div>
+      <div class="glass-card" style="padding:1.5rem;margin-top:1.25rem;">
+        <div class="section-title" style="margin-bottom:1rem;">Répartition par statut des étudiants</div>
+        <div id="status-chart"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL: Add University -->
+  <div class="modal-overlay" id="modal-add-univ">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title"><i class="fa-solid fa-school"></i> Créer une université</div>
+        <button class="modal-close" onclick="closeModal('modal-add-univ')">✕</button>
+      </div>
+      <form onsubmit="addUniversity(event)">
+        <div class="form-group">
+          <label class="form-label">Code <span>*</span></label>
+          <input id="new-univ-code" type="text" class="form-control" placeholder="Ex: UNIBU" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nom complet <span>*</span></label>
+          <input id="new-univ-nom" type="text" class="form-control" placeholder="Ex: Université de Bukavu" required>
+        </div>
+        <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1.25rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-add-univ')">Annuler</button>
+          <button type="submit" class="btn btn-primary">Créer l'université</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Add Admin -->
+  <div class="modal-overlay" id="modal-add-admin">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title"><i class="fa-solid fa-user"></i> Créer un administrateur</div>
+        <button class="modal-close" onclick="closeModal('modal-add-admin')">✕</button>
+      </div>
+      <form onsubmit="addAdmin(event)">
+        <div class="form-group">
+          <label class="form-label">Nom complet <span>*</span></label>
+          <input id="new-admin-nom" type="text" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email <span>*</span></label>
+          <input id="new-admin-email" type="email" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mot de passe <span>*</span></label>
+          <input id="new-admin-pass" type="password" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Université <span>*</span></label>
+          <select id="new-admin-univ" class="form-control" required></select>
+        </div>
+        <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1.25rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-add-admin')">Annuler</button>
+          <button type="submit" class="btn btn-primary">Créer l'administrateur</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="../src/store.js"></script>
+  <script>
+    const user = Store.requireAuth(['MINISTERE']);
+    if (user) {
+      document.getElementById('sidebar-name').textContent = user.nom;
+      document.getElementById('sidebar-avatar').textContent = user.nom[0];
+    }
+
+    function showTab(name) {
+      ['dashboard','universities','admins','logs','stats'].forEach(t => {
+        document.getElementById(`tab-${t}`).style.display = t === name ? '' : 'none';
+      });
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      const tabMap = { dashboard: 0, universities: 1, admins: 2, logs: 3, stats: 4 };
+      document.querySelectorAll('.nav-item')[tabMap[name]]?.classList.add('active');
+      if (name === 'dashboard') renderDashboard();
+      if (name === 'universities') renderUniversities();
+      if (name === 'admins') renderAdmins();
+      if (name === 'logs') renderLogs();
+      if (name === 'stats') renderStats();
+    }
+
+    function renderDashboard() {
+      const stats = Store.getStats();
+      const grid = document.getElementById('stats-grid');
+      grid.innerHTML = `
+        <div class="glass-card stat-card anim-fade-up" style="--accent-color:#f59e0b" onclick="showTab('universities')">
+          <div class="stat-icon"><i class="fa-solid fa-school"></i></div>
+          <div class="stat-label">Universités</div>
+          <div class="stat-value" style="color:var(--gold)">${stats.total_universities}</div>
+          <div class="stat-sub">Institutions enregistrées</div>
+        </div>
+        <div class="glass-card stat-card anim-fade-up" style="--accent-color:#3b82f6" onclick="showTab('stats')">
+          <div class="stat-icon"><i class="fa-solid fa-book-open"></i></div>
+          <div class="stat-label">Facultés</div>
+          <div class="stat-value" style="color:var(--blue-light)">${stats.total_faculties}</div>
+          <div class="stat-sub">Au total</div>
+        </div>
+        <div class="glass-card stat-card anim-fade-up" style="--accent-color:#10b981" onclick="showTab('stats')">
+          <div class="stat-icon"><i class="fa-solid fa-graduation-cap"></i></div>
+          <div class="stat-label">Étudiants</div>
+          <div class="stat-value" style="color:var(--green)">${stats.total_students}</div>
+          <div class="stat-sub">Dossiers enregistrés</div>
+        </div>
+        <div class="glass-card stat-card anim-fade-up" style="--accent-color:#8b5cf6" onclick="showTab('stats')">
+          <div class="stat-icon"><i class="fa-solid fa-id-card"></i></div>
+          <div class="stat-label">Cartes générées</div>
+          <div class="stat-value" style="color:#a78bfa">${stats.cartes_generees}</div>
+          <div class="stat-sub">Cartes actives</div>
+        </div>
+      `;
+      // Mini univ list
+      const univs = Store.getUniversities();
+      const facs = Store.getFaculties();
+      const students = Store.getStudents();
+      document.getElementById('mini-univ-list').innerHTML = univs.map(u => `
+        <div class="univ-card">
+          <div class="univ-avatar"><i class="fa-solid fa-school"></i></div>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:0.88rem;">${u.nom}</div>
+            <div class="univ-code">${u.code} · ${facs.filter(f=>f.university_id===u.id).length} facultés · ${students.filter(s=>s.university_id===u.id).length} étudiants</div>
+          </div>
+          <span class="badge badge-success">Actif</span>
+        </div>
+      `).join('');
+      // Mini logs
+      const logs = Store.getLogs(5);
+      document.getElementById('mini-log-list').innerHTML = logs.map(l => `
+        <div class="log-item">
+          <div class="log-icon" style="background:rgba(59,130,246,0.1);color:var(--blue-light)"><i class="fa-solid fa-thumbtack"></i></div>
+          <div class="log-content">
+            <div class="log-action">${l.action.replace(/_/g,' ')}</div>
+            <div class="log-meta">${l.target} · par ${l.user_nom}</div>
+          </div>
+          <div class="log-time">${timeSince(l.created_at)}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderUniversities() {
+      const univs = Store.getUniversities();
+      const facs = Store.getFaculties();
+      const students = Store.getStudents();
+      document.getElementById('univ-tbody').innerHTML = univs.map(u => `
+        <tr>
+          <td><span style="font-family:monospace;color:var(--blue-light);font-weight:700;">${u.code}</span></td>
+          <td style="font-weight:600;">${u.nom}</td>
+          <td>${facs.filter(f=>f.university_id===u.id).length}</td>
+          <td>${students.filter(s=>s.university_id===u.id).length}</td>
+          <td><span class="badge badge-success"><i class="fa-solid fa-check"></i> Actif</span></td>
+          <td><button class="btn btn-secondary btn-sm" onclick="suspendUniv(${u.id})">Suspendre</button></td>
+        </tr>
+      `).join('');
+    }
+
+    function renderAdmins() {
+      const admins = Store.getUsers('UNIVERSITE');
+      const univs = Store.getUniversities();
+      document.getElementById('admins-tbody').innerHTML = admins.map(a => {
+        const univ = univs.find(u => u.id === a.university_id);
+        return `
+          <tr>
+            <td style="font-weight:600;">${a.nom}</td>
+            <td style="color:var(--text-secondary)">${a.email}</td>
+            <td>${univ ? univ.nom : '—'}</td>
+            <td><span class="badge ${a.active ? 'badge-success' : 'badge-error'}">${a.active ? 'Actif' : 'Suspendu'}</span></td>
+          </tr>
+        `;
+      }).join('');
+      // Populate univ select in modal
+      const sel = document.getElementById('new-admin-univ');
+      sel.innerHTML = '<option value="">-- Université --</option>';
+      univs.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.id; opt.textContent = u.nom; sel.appendChild(opt);
+      });
+    }
+
+    function renderLogs() {
+      const logs = Store.getLogs(100);
+      document.getElementById('full-log-list').innerHTML = logs.map(l => `
+        <div class="log-item">
+          <div class="log-icon" style="background:rgba(59,130,246,0.1);color:var(--blue-light)"><i class="fa-solid fa-thumbtack"></i></div>
+          <div class="log-content">
+            <div class="log-action">${l.action.replace(/_/g,' ')}</div>
+            <div class="log-meta">${l.target} · par ${l.user_nom}</div>
+          </div>
+          <div class="log-time">${new Date(l.created_at).toLocaleString('fr-FR')}</div>
+        </div>
+      `).join('') || '<p style="color:var(--text-muted);padding:1rem;">Aucune action enregistrée.</p>';
+    }
+
+    function renderStats() {
+      const stats = Store.getStats();
+      document.getElementById('stats-grid-2').innerHTML = `
+        <div class="glass-card stat-card" style="--accent-color:#f59e0b"><div class="stat-label">En attente</div><div class="stat-value" style="color:var(--gold)">${stats.en_attente}</div></div>
+        <div class="glass-card stat-card" style="--accent-color:#3b82f6"><div class="stat-label">Validés Faculté</div><div class="stat-value" style="color:var(--blue-light)">${stats.faculte_valide}</div></div>
+        <div class="glass-card stat-card" style="--accent-color:#10b981"><div class="stat-label">Validés Université</div><div class="stat-value" style="color:var(--green)">${stats.universite_valide}</div></div>
+        <div class="glass-card stat-card" style="--accent-color:#8b5cf6"><div class="stat-label">Cartes générées</div><div class="stat-value" style="color:#a78bfa">${stats.cartes_generees}</div></div>
+      `;
+      const total = stats.total_students || 1;
+      const bars = [
+        { label: 'En attente', val: stats.en_attente, color: 'var(--gold)' },
+        { label: 'Validé Faculté', val: stats.faculte_valide, color: 'var(--blue-light)' },
+        { label: 'Validé Université', val: stats.universite_valide, color: 'var(--green)' },
+        { label: 'Carte générée', val: stats.cartes_generees, color: '#a78bfa' },
+      ];
+      document.getElementById('status-chart').innerHTML = bars.map(b => `
+        <div style="margin-bottom:1rem;">
+          <div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:0.35rem;">
+            <span style="color:var(--text-secondary)">${b.label}</span>
+            <span style="font-weight:700;color:${b.color}">${b.val}</span>
+          </div>
+          <div style="height:8px;border-radius:4px;background:rgba(0,0,0,0.06);overflow:hidden;">
+            <div style="height:100%;border-radius:4px;background:${b.color};width:${Math.round(b.val/total*100)}%;transition:width 0.8s ease;"></div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function addUniversity(e) {
+      e.preventDefault();
+      const code = document.getElementById('new-univ-code').value.trim().toUpperCase();
+      const nom = document.getElementById('new-univ-nom').value.trim();
+      Store.createUniversity({ code, nom });
+      Store.getLogs(); // just to trigger logs
+      closeModal('modal-add-univ');
+      showNotif(`Université ${code} créée avec succès !`, 'success');
+      renderDashboard();
+    }
+
+    function addAdmin(e) {
+      e.preventDefault();
+      const nom = document.getElementById('new-admin-nom').value.trim();
+      const email = document.getElementById('new-admin-email').value.trim();
+      const password = document.getElementById('new-admin-pass').value;
+      const university_id = parseInt(document.getElementById('new-admin-univ').value);
+      Store.createUser({ nom, email, password, role: 'UNIVERSITE', university_id, faculty_id: null });
+      closeModal('modal-add-admin');
+      showNotif(`Administrateur ${nom} créé !`, 'success');
+      renderAdmins();
+    }
+
+    function suspendUniv(id) {
+      showNotif('Fonctionnalité de suspension enregistrée dans les logs.', 'warning');
+    }
+
+    function openModal(id) { document.getElementById(id).classList.add('open'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+    function logout() { Store.clearSession(); window.location.href = '../index.html'; }
+
+    function timeSince(dateStr) {
+      const diff = Date.now() - new Date(dateStr).getTime();
+      const m = Math.floor(diff / 60000);
+      if (m < 60) return `Il y a ${m}min`;
+      const h = Math.floor(m / 60);
+      if (h < 24) return `Il y a ${h}h`;
+      return `Il y a ${Math.floor(h/24)}j`;
+    }
+
+    function showNotif(msg, type = 'info') {
+      const c = document.getElementById('notif-container');
+      const el = document.createElement('div');
+      el.className = `notif notif-${type}`;
+      el.textContent = msg;
+      c.appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }
+
+    renderDashboard();
+  </script>
+</body>
+</html>

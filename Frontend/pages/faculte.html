@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Faculté — Cartes Étudiantes</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="../src/style.css">
+</head>
+<body>
+<div class="bg-mesh"></div>
+<div class="notif-container" id="notif-container"></div>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon"><i class="fa-solid fa-book-open"></i></div>
+    <div class="logo-text"><strong id="fac-name-sidebar">Faculté</strong><span>Administration</span></div>
+  </div>
+  <div class="sidebar-role role-FACULTE"><i class="fa-solid fa-book-open"></i> Admin Faculté</div>
+  <nav class="sidebar-nav">
+    <a class="nav-item active" href="#" onclick="showTab('dashboard')"><span class="nav-icon"><i class="fa-solid fa-chart-simple"></i></span>Tableau de bord</a>
+    <a class="nav-item" href="#" onclick="showTab('dossiers')"><span class="nav-icon"><i class="fa-solid fa-folder-open"></i></span>Dossiers reçus</a>
+    <a class="nav-item" href="#" onclick="showTab('verification')"><span class="nav-icon"><i class="fa-solid fa-magnifying-glass"></i></span>Vérification</a>
+    <a class="nav-item" href="#" onclick="showTab('transmis')"><span class="nav-icon"><i class="fa-solid fa-paper-plane"></i></span>Transmis</a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="user-avatar" id="sidebar-avatar">F</div>
+      <div class="user-info"><strong id="sidebar-name">...</strong><span>Faculté</span></div>
+    </div>
+    <button class="btn btn-secondary" style="width:100%;margin-top:.75rem;justify-content:center" onclick="logout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Déconnexion</button>
+  </div>
+</aside>
+
+<main class="main-wrapper">
+  <!-- DASHBOARD -->
+  <div id="tab-dashboard">
+    <div class="topbar">
+      <div><div class="page-title">Tableau de bord</div><div class="page-subtitle">Gestion des dossiers étudiants de la faculté</div></div>
+      <button class="btn btn-primary" onclick="showTab('verification')"><i class="fa-solid fa-magnifying-glass"></i> Vérifier des dossiers</button>
+    </div>
+    <div class="stats-grid" id="dash-stats"></div>
+    <div class="glass-card" style="padding:1.5rem;margin-top:0">
+      <div class="section-header"><div class="section-title"><i class="fa-solid fa-folder-open"></i> Dossiers récents</div><button class="btn btn-secondary btn-sm" onclick="showTab('dossiers')">Tout voir</button></div>
+      <div class="table-wrapper"><table>
+        <thead><tr><th>ID National</th><th>Étudiant</th><th>Promotion</th><th>Statut</th><th>Soumis</th></tr></thead>
+        <tbody id="recent-students"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- DOSSIERS REÇUS -->
+  <div id="tab-dossiers" style="display:none">
+    <div class="topbar">
+      <div><div class="page-title"><i class="fa-solid fa-folder-open"></i> Dossiers Reçus</div><div class="page-subtitle">Tous les dossiers déposés par les étudiants</div></div>
+    </div>
+    <div class="glass-card" style="padding:1.5rem">
+      <div class="table-wrapper"><table>
+        <thead><tr><th>ID National</th><th>Nom complet</th><th>Matricule univ.</th><th>Promotion</th><th>Statut</th><th>Date soumission</th><th>Actions</th></tr></thead>
+        <tbody id="all-students-tbody"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- VERIFICATION -->
+  <div id="tab-verification" style="display:none">
+    <div class="topbar">
+      <div><div class="page-title"><i class="fa-solid fa-magnifying-glass"></i> Vérification des Dossiers</div><div class="page-subtitle">Contrôlez et corrigez les dossiers avant transmission</div></div>
+    </div>
+    <div id="verify-list"></div>
+  </div>
+
+  <!-- TRANSMIS -->
+  <div id="tab-transmis" style="display:none">
+    <div class="topbar">
+      <div><div class="page-title"><i class="fa-solid fa-paper-plane"></i> Dossiers Transmis</div><div class="page-subtitle">Dossiers envoyés à l'université pour validation finale</div></div>
+    </div>
+    <div class="glass-card" style="padding:1.5rem">
+      <div class="table-wrapper"><table>
+        <thead><tr><th>ID National</th><th>Étudiant</th><th>Promotion</th><th>Statut</th><th>Carte</th></tr></thead>
+        <tbody id="transmis-tbody"></tbody>
+      </table></div>
+    </div>
+  </div>
+</main>
+
+<!-- MODAL: Detail Dossier -->
+<div class="modal-overlay" id="modal-detail">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-header"><div class="modal-title" id="modal-detail-title">Détail du dossier</div><button class="modal-close" onclick="closeModal('modal-detail')">✕</button></div>
+    <div id="modal-detail-body"></div>
+  </div>
+</div>
+
+<script src="../src/store.js"></script>
+<script>
+const user = Store.requireAuth(['FACULTE']);
+const facId = user ? user.faculty_id : null;
+const univId = user ? user.university_id : null;
+
+if (user) {
+  document.getElementById('sidebar-name').textContent = user.nom;
+  document.getElementById('sidebar-avatar').textContent = user.nom[0];
+  const facs = Store.getFaculties(univId);
+  const fac = facs.find(f=>f.id===facId);
+  if (fac) document.getElementById('fac-name-sidebar').textContent = fac.nom;
+}
+
+function showTab(name) {
+  ['dashboard','dossiers','verification','transmis'].forEach(t=>{
+    document.getElementById(`tab-${t}`).style.display = t===name?'':'none';
+  });
+  document.querySelectorAll('.nav-item').forEach((el,i)=>{
+    el.classList.toggle('active',['dashboard','dossiers','verification','transmis'][i]===name);
+  });
+  if(name==='dashboard') renderDashboard();
+  if(name==='dossiers') renderDossiers();
+  if(name==='verification') renderVerification();
+  if(name==='transmis') renderTransmis();
+}
+
+function getMyStudents() { return Store.getStudents({faculty_id: facId}); }
+
+function renderDashboard() {
+  const students = getMyStudents();
+  const en_attente = students.filter(s=>s.status==='EN_ATTENTE').length;
+  const valides = students.filter(s=>s.status==='FACULTE_VALIDÉ').length;
+  const cartes = students.filter(s=>s.status==='CARTE_GÉNÉRÉE').length;
+  document.getElementById('dash-stats').innerHTML = `
+    <div class="glass-card stat-card anim-fade-up" style="--accent-color:#3b82f6" onclick="showTab('verify')">
+      <div class="stat-icon"><i class="fa-solid fa-folder-open"></i></div><div class="stat-label">Total dossiers</div>
+      <div class="stat-value" style="color:var(--blue-light)">${students.length}</div><div class="stat-sub">Reçus</div>
+    </div>
+    <div class="glass-card stat-card anim-fade-up" style="--accent-color:#f59e0b" onclick="showTab('dossiers')">
+      <div class="stat-icon"><i class="fa-solid fa-hourglass-half"></i></div><div class="stat-label">En attente</div>
+      <div class="stat-value" style="color:var(--gold)">${en_attente}</div><div class="stat-sub">À vérifier</div>
+    </div>
+    <div class="glass-card stat-card anim-fade-up" style="--accent-color:#10b981" onclick="showTab('dossiers')">
+      <div class="stat-icon"><i class="fa-solid fa-paper-plane"></i></div><div class="stat-label">Transmis</div>
+      <div class="stat-value" style="color:var(--green)">${valides}</div><div class="stat-sub">À l'université</div>
+    </div>
+    <div class="glass-card stat-card anim-fade-up" style="--accent-color:#8b5cf6" onclick="showTab('cards')">
+      <div class="stat-icon"><i class="fa-solid fa-id-card"></i></div><div class="stat-label">Cartes générées</div>
+      <div class="stat-value" style="color:#a78bfa">${cartes}</div><div class="stat-sub">Complétés</div>
+    </div>`;
+
+  const recent = students.slice(-5).reverse();
+  document.getElementById('recent-students').innerHTML = recent.map(s=>`
+    <tr>
+      <td style="font-family:monospace;color:var(--blue-light);font-size:.8rem">${s.national_id}</td>
+      <td style="font-weight:600">${s.nom} ${s.postnom} ${s.prenom}</td>
+      <td><span class="badge badge-info">${s.promotion}</span></td>
+      <td>${statusBadge(s.status)}</td>
+      <td style="font-size:.78rem;color:var(--text-muted)">${new Date(s.submitted_at).toLocaleDateString('fr-FR')}</td>
+    </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1.5rem">Aucun dossier</td></tr>';
+}
+
+function renderDossiers() {
+  const students = getMyStudents();
+  document.getElementById('all-students-tbody').innerHTML = students.map(s=>`
+    <tr>
+      <td style="font-family:monospace;color:var(--blue-light);font-size:.8rem">${s.national_id}</td>
+      <td style="font-weight:600">${s.nom} ${s.postnom} ${s.prenom}</td>
+      <td style="font-size:.8rem;color:var(--text-secondary)">${s.university_student_id}</td>
+      <td><span class="badge badge-info">${s.promotion}</span></td>
+      <td>${statusBadge(s.status)}</td>
+      <td style="font-size:.78rem;color:var(--text-muted)">${new Date(s.submitted_at).toLocaleDateString('fr-FR')}</td>
+      <td><button class="btn btn-secondary btn-sm" onclick="openDetail(${s.id})"><i class="fa-solid fa-eye"></i> Détail</button></td>
+    </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem">Aucun dossier reçu</td></tr>';
+}
+
+function renderVerification() {
+  const pending = getMyStudents().filter(s=>s.status==='EN_ATTENTE');
+  if (!pending.length) {
+    document.getElementById('verify-list').innerHTML = `
+      <div class="glass-card" style="padding:3rem;text-align:center">
+        <div style="font-size:3rem;margin-bottom:1rem"><i class="fa-solid fa-check"></i></div>
+        <div style="font-size:1.1rem;font-weight:700;margin-bottom:.5rem">Tous les dossiers sont traités !</div>
+        <p style="color:var(--text-secondary);font-size:.87rem">Il n'y a aucun dossier en attente de vérification.</p>
+      </div>`;
+    return;
+  }
+  document.getElementById('verify-list').innerHTML = pending.map(s=>`
+    <div class="glass-card" style="padding:1.5rem;margin-bottom:1.25rem" id="card-${s.id}">
+      <div style="display:flex;align-items:flex-start;gap:1.25rem;flex-wrap:wrap">
+        <div style="width:64px;height:80px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:2rem;flex-shrink:0"><i class="fa-solid fa-user"></i></div>
+        <div style="flex:1;min-width:200px">
+          <div style="font-weight:700;font-size:1rem;margin-bottom:.25rem">${s.nom} ${s.postnom} ${s.prenom}</div>
+          <div style="font-family:monospace;font-size:.78rem;color:var(--blue-light);margin-bottom:.5rem">${s.national_id}</div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;font-size:.8rem;color:var(--text-secondary)">
+            <span><i class="fa-solid fa-clipboard-list"></i> ${s.university_student_id}</span>
+            <span><i class="fa-solid fa-graduation-cap"></i> ${s.promotion}</span>
+            <span><i class="fa-solid fa-calendar-days"></i> ${s.academic_year}</span>
+            <span><i class="fa-solid fa-calendar"></i> Soumis ${new Date(s.submitted_at).toLocaleDateString('fr-FR')}</span>
+          </div>
+        </div>
+        <div>
+          <div style="margin-bottom:.5rem;font-size:.78rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Vérifications</div>
+          <div style="display:flex;flex-direction:column;gap:.3rem;font-size:.82rem">
+            <div style="color:var(--green)"><i class="fa-solid fa-check"></i> Informations complètes</div>
+            <div style="color:var(--green)"><i class="fa-solid fa-check"></i> Matricule vérifié</div>
+            <div style="color:var(--green)"><i class="fa-solid fa-check"></i> Photo présente</div>
+            <div style="color:var(--green)"><i class="fa-solid fa-check"></i> Aucun doublon</div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+        <div style="font-size:.8rem;font-weight:600;color:var(--text-muted);margin-bottom:.5rem">Note de correction (optionnel)</div>
+        <textarea id="note-${s.id}" class="form-control" placeholder="Ajouter une note ou correction..." style="height:60px;resize:vertical;font-size:.83rem"></textarea>
+      </div>
+      <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1rem">
+        <button class="btn btn-danger btn-sm" onclick="rejectStudent(${s.id})"><i class="fa-solid fa-xmark"></i> Rejeter</button>
+        <button class="btn btn-success" onclick="transmitStudent(${s.id})"><i class="fa-solid fa-paper-plane"></i> Transmettre à l'université</button>
+      </div>
+    </div>`).join('');
+}
+
+function renderTransmis() {
+  const students = getMyStudents().filter(s=>['FACULTE_VALIDÉ','UNIVERSITÉ_VALIDÉ','CARTE_GÉNÉRÉE'].includes(s.status));
+  document.getElementById('transmis-tbody').innerHTML = students.map(s=>`
+    <tr>
+      <td style="font-family:monospace;color:var(--blue-light);font-size:.8rem">${s.national_id}</td>
+      <td style="font-weight:600">${s.nom} ${s.postnom} ${s.prenom}</td>
+      <td><span class="badge badge-info">${s.promotion}</span></td>
+      <td>${statusBadge(s.status)}</td>
+      <td>${s.status==='CARTE_GÉNÉRÉE'?'<span class="badge badge-success"><i class="fa-solid fa-check"></i> Disponible</span>':'<span style="color:var(--text-muted);font-size:.8rem">En cours</span>'}</td>
+    </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem">Aucun dossier transmis</td></tr>';
+}
+
+function transmitStudent(id) {
+  Store.updateStudentStatus(id,'FACULTE_VALIDÉ',user.id);
+  showNotif('Dossier transmis à l\'université avec succès !','success');
+  document.getElementById(`card-${id}`)?.remove();
+  const pending = getMyStudents().filter(s=>s.status==='EN_ATTENTE');
+  if (!pending.length) renderVerification();
+}
+
+function rejectStudent(id) {
+  Store.updateStudentStatus(id,'REJETÉ',user.id);
+  showNotif('Dossier rejeté.','warning');
+  document.getElementById(`card-${id}`)?.remove();
+}
+
+function openDetail(id) {
+  const s = getMyStudents().find(st=>st.id===id);
+  if (!s) return;
+  document.getElementById('modal-detail-title').textContent = `Dossier — ${s.national_id}`;
+  document.getElementById('modal-detail-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem 1.5rem;font-size:.87rem">
+      ${field('Nom',s.nom)} ${field('Post-nom',s.postnom)}
+      ${field('Prénom',s.prenom)} ${field('Promotion',s.promotion)}
+      ${field('ID National',s.national_id,'font-family:monospace;color:var(--blue-light)')}
+      ${field('Matricule Univ.',s.university_student_id)}
+      ${field('Année acad.',s.academic_year)} ${field('Statut',s.status)}
+      ${field('Photo',s.photo_path||'(non stockée en démo)')}
+      ${field('Soumis le',new Date(s.submitted_at).toLocaleString('fr-FR'))}
+    </div>
+    <div style="margin-top:1.5rem;display:flex;gap:.75rem;justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="closeModal('modal-detail')">Fermer</button>
+      ${s.status==='EN_ATTENTE'?`<button class="btn btn-success" onclick="transmitStudent(${s.id});closeModal('modal-detail');showTab('verification')"><i class="fa-solid fa-paper-plane"></i> Transmettre</button>`:''}
+    </div>`;
+  openModal('modal-detail');
+}
+
+function field(label,val,style='') {
+  return `<div><div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:.2rem">${label}</div><div style="${style}">${val||'—'}</div></div>`;
+}
+
+function statusBadge(s) {
+  const map = {
+    'EN_ATTENTE':'<span class="badge badge-warning"><i class="fa-solid fa-hourglass-half"></i> En attente</span>',
+    'FACULTE_VALIDÉ':'<span class="badge badge-info"><i class="fa-solid fa-paper-plane"></i> Transmis</span>',
+    'UNIVERSITÉ_VALIDÉ':'<span class="badge badge-success"><i class="fa-solid fa-check"></i> Validé Université</span>',
+    'CARTE_GÉNÉRÉE':'<span class="badge badge-purple"><i class="fa-solid fa-id-card"></i> Carte générée</span>',
+    'REJETÉ':'<span class="badge badge-error"><i class="fa-solid fa-xmark"></i> Rejeté</span>',
+  };
+  return map[s]||s;
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function logout() { Store.clearSession(); window.location.href='../index.html'; }
+function showNotif(msg,type='info') {
+  const c=document.getElementById('notif-container');
+  const el=document.createElement('div'); el.className=`notif notif-${type}`; el.textContent=msg;
+  c.appendChild(el); setTimeout(()=>el.remove(),4000);
+}
+
+renderDashboard();
+</script>
+</body>
+</html>
